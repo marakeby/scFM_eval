@@ -3,10 +3,10 @@ dataset:
     module: data.data_loader
     class: H5ADLoader
     # path: DATA/brca_full/brca_full_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
-    path: DATA/brca_full/T_cells_only.h5ad
+    path: mnt/DATA/brca_full/T_cells_only.h5ad
     load_raw: False
     label_key: pre_post
-    batch_key: Cancer_type
+    batch_key: donor_id
     layer_name: X  
     train_test_split: data_splits/brca_full/brca_pre_post/train_test_split.json #path is relative to BASE_PATH in setup_path.py
     cv_splits: data_splits/brca_full/brca_pre_post/cv_splits.json #path is relative to BASE_PATH in setup_path.py
@@ -24,32 +24,36 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
     method: scVI
     module: features.scvi_extractor
     class: scVIEmbeddingExtractor
-    viz: False
-    eval: False
+    viz: True
+    eval: True
     params:
         batch_key: cell_types
         n_layers: 2
-        n_latent: 30
+        n_latent: 100
         gene_likelihood: "nb"
         max_epochs: 10
-        layer_name:  #None 
+        layer_name: #None 
         batch_size: 217
 
 classification:
-    # skip: True
+    skip: False
     module: models.classify
     class: ClassifierPipeline
     params:
         model: randomforest
         n_estimators: 100
         max_depth: 5
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         cv: True
         label_map:
               Pre: 0

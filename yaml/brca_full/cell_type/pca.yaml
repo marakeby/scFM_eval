@@ -2,10 +2,10 @@ run_id:
 dataset:
     module: data.data_loader
     class: H5ADLoader
-    path: DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: False
     label_key: cell_types
-    batch_key: Cancer_type
+    batch_key: donor_id
     filter: 
       - column: timepoint
         values:

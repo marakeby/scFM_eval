@@ -2,7 +2,7 @@ run_id:
 dataset:
     module: data.data_loader
     class: H5ADLoader
-    path: DATA/luad_brca/luad/luad_analysis1.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/luad_brca/luad/luad_analysis1.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: True
     label_key: group_id
     batch_key: sample_id
@@ -12,15 +12,17 @@ dataset:
 
 
 qc:
+    skip: True
     min_genes: 10
     min_cells: 10
 
 hvg:
-    batch_key: batch
+    batch_key: #batch
     n_top_genes: 2048
     flavor: seurat # expect logarithmized data
     
 preprocessing:
+    skip: True
     normalize: True
     target_sum: 10000
     apply_log1p: True
@@ -34,7 +36,7 @@ embedding:
     params:
         batch_key: sample_id
         n_layers: 2
-        n_latent: 20
+        n_latent: 100
         gene_likelihood: "nb"
         max_epochs: 10
         layer_name: #None 
@@ -47,6 +49,10 @@ classification:
         n_estimators: 100
         max_depth: 5
         cv: True
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         label_map:
               early_stage: 0
               late_stage: 1

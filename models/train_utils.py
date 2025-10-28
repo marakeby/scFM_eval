@@ -89,7 +89,7 @@ class SubsampledPatientDataset(TorchDataset):
         }
         print(bag['sample_id'])
         return ret
-    
+
 def collate_patient_level(batch):
     """
     batch: list of dicts returned from PatientDataset.__getitem__
@@ -172,7 +172,7 @@ class ChunkedBertMILClassifier_check(nn.Module):
 
         patient_logit = logits_sum / total_cells  # [1]
         return patient_logit.view(-1)
-    
+
 # class DataCollatorForPatientClassification(DataCollatorForCellClassification):
 #     def __init__(self, token_dictionary, sample_id):
 #         self.token_dictionary = token_dictionary
@@ -429,10 +429,16 @@ def train_patient_classifier(train_ds, test_ds, sample_id, model_dir, vocab_dir,
     logger.info(sample_ids)
     return model, sample_ids, y_true, y_pred, y_score
 
-def train_classifier_cell(train_ds, test_ds, model_dir, vocab_dir, output_dir, num_labels, device, freeze_layers):
+def train_classifier_cell(train_ds, test_ds, model_dir, vocab_dir, output_dir, num_labels, device, freeze_layers, batch_size, num_train_epochs):
     # logger = logging.getLogger(__name__)
     logger.info('Fine Tuning Model')
-    training_args = {'output_dir': output_dir, 'logging_dir': output_dir}
+    training_args ={}
+    training_args['output_dir'] = output_dir
+    training_args['logging_dir'] = output_dir
+    training_args['per_device_train_batch_size']=batch_size
+    training_args['per_device_eval_batch_size']=batch_size
+    training_args['num_train_epochs'] = num_train_epochs
+    
     y_test = np.array(test_ds['label'])
     with open(vocab_dir, "rb") as f:
         vocab = pickle.load(f)

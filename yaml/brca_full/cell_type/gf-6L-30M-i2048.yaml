@@ -2,10 +2,10 @@ run_id:
 dataset:
     module: data.gf_loader
     class: GFLoader
-    path: DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: False
     label_key: cell_types
-    batch_key: Cancer_type
+    batch_key: donor_id
     filter: 
       - column: timepoint
         values:
@@ -25,7 +25,7 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
@@ -38,8 +38,8 @@ embedding:
         #1- Genefromer 1
         model: Geneformer-V1-10M 
         version: V1
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
+        model_dir: /home/jupyter/mnt/MODELS/
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
         input_size: 2048
         batch_size: 8
 

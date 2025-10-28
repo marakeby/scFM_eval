@@ -1,6 +1,7 @@
 import scanpy as sc
 import logging
 import scvi
+scvi.settings.seed = 9627
 
 from features.extractor import EmbeddingExtractor
 from utils.logs_ import get_logger
@@ -17,7 +18,7 @@ class scVIEmbeddingExtractor(EmbeddingExtractor):
         self.gene_likelihood = self.params.get('gene_likelihood', None)
         self.max_epochs = self.params.get('max_epochs', None)
         self.layer_name = self.params.get('layer_name', None)
-        self.layer_name = self.params.get('layer_name', None)
+        # self.layer_name = self.params.get('layer_name', None)
         # self.njobs = self.params.get('njobs', 0)
         self.batch_size = self.params.get('batch_size', 16)
         self.hvg_params = self.params.get('hvg_params', False)

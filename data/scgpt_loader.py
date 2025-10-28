@@ -1,7 +1,7 @@
 from scgpt.preprocess import Preprocessor
 from data.data_loader import H5ADLoader
 from scipy.sparse import issparse
-
+import numpy as np
 
 class scgptLoader(H5ADLoader):
     
@@ -14,7 +14,7 @@ class scgptLoader(H5ADLoader):
         
         #assume gene names are stored in var.index
         self.adata.var['gene_name'] = self.adata.var.index
-        
+        print('min max', np.min(self.adata.X), np.max(self.adata.X))
         preprocessor = Preprocessor(
             #  whether to bin the raw data and to what number of bins
             binning = n_bins, 

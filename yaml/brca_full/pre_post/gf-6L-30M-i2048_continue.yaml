@@ -3,10 +3,10 @@ dataset:
     module: data.gf_loader
     class: GFLoader
     # path: DATA/brca_full/brca_full_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
-    path: DATA/brca_full/T_cells_only.h5ad
+    path: mnt/DATA/brca_full/T_cells_only.h5ad
     load_raw: False
     label_key: pre_post
-    batch_key: Cancer_type
+    batch_key: donor_id
     layer_name: X  #if data exist in another layer (e.g. adta.layers['counts']). The data will be copied to adata.X
     train_test_split: data_splits/brca_full/brca_pre_post/train_test_split.json #path is relative to BASE_PATH in setup_path.py
     cv_splits: data_splits/brca_full/brca_pre_post/cv_splits.json #path is relative to BASE_PATH in setup_path.py
@@ -24,7 +24,7 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
@@ -37,9 +37,9 @@ embedding:
         #1- Genefromer 1
         model: Geneformer-V1-10M 
         version: V1
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
-        input_size: 2048
+        model_dir: /home/jupyter/mnt/MODELS
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
+        input_size: 4096
         batch_size: 16
         continue_training:
             learning_rate: 0.001
@@ -63,6 +63,10 @@ classification:
         model: randomforest
         n_estimators: 100
         max_depth: 5
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         cv: True
         label_map:
               Pre: 0

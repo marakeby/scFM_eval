@@ -2,29 +2,154 @@
 Main experiment runner for scFM_eval.
 Handles configuration, data loading, preprocessing, feature extraction, model training, and evaluation.
 """
+# import os
+# os.environ.setdefault("PYTHONHASHSEED", "0")
+# os.environ.setdefault("OMP_NUM_THREADS", "1")
+# os.environ.setdefault("MKL_NUM_THREADS", "1")
+# # os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")      # if needed
+# # os.environ.setdefault("TF_DETERMINISTIC_OPS", "1")      # if TF
+# # os.environ.setdefault("JAX_PLATFORM_NAME", "cpu")       # if JAX
 
-import os
-import sys
-import shutil
-import logging
-import random
-import time
-from functools import wraps
-from pathlib import Path
-from os.path import dirname, abspath, join, basename, exists
+# # 1) Warnings policy
+# import warnings
+# warnings.simplefilter("ignore", category=FutureWarning)
 
+# # 2) Seed the world early
+# import random, numpy as np
+# random.seed(0)
+# np.random.seed(0)
+
+# # 3) Now import frameworks and lock determinism
+# import torch
+# torch.manual_seed(0)
+# torch.cuda.manual_seed_all(0)
+# torch.backends.cudnn.benchmark = False
+# torch.backends.cudnn.deterministic = True
+# # torch.use_deterministic_algorithms(True, warn_only=True)
+
+# # 4) Only now import project modules (which may have import-time side effects)
+# import sys
+# from os.path import dirname, abspath
+# dir_path = dirname(dirname(abspath(__file__)))
+# if dir_path not in sys.path:
+#     sys.path.insert(0, dir_path)
+
+# # Core libs you rely on explicitly
+# import yaml, pandas as pd, anndata as ad
+# from functools import wraps
+# from os.path import dirname, abspath, join, basename, exists
+# import shutil
+# import time
+# import importlib
+
+# # Project modules last
+# from viz.visualization import EmbeddingVisualizer
+# from evaluation.eval import EmbeddingEvaluator
+# from utils.logs_ import set_logging, get_logger
+# from setup_path import BASE_PATH, OUTPUT_PATH, PARAMS_PATH, DATA_PATH
+
+#-------good list --
 import yaml
-import numpy as np
-import torch
-import pandas as pd
+from pathlib import Path
+import importlib
+import sys
+import os
+from os.path import dirname, abspath, join, basename, exists
+import shutil
 
+
+dir_path = dirname(dirname(abspath(__file__)))
+print(dir_path)
+sys.path.insert(0,dir_path)
+
+import logging
+# logger = logging.getLogger('ml_logger')
 from viz.visualization import EmbeddingVisualizer
 from evaluation.eval import EmbeddingEvaluator
 from utils.logs_ import set_logging, get_logger
 from setup_path import BASE_PATH, OUTPUT_PATH, PARAMS_PATH, DATA_PATH
 
+embedding_method_map= dict(PCA='X_pca', HVG='X_hvg', scVI='X_scVI', geneformer='X_geneformer', scgpt='X_scGPT')
+
+import random
+import numpy as np
+import torch
+import time
+from functools import wraps
+import pandas as pd
+import anndata as ad
+
+# RNG / determinism snapshot
+# import numpy as np, torch, os
+# print("np first rand:", np.random.RandomState(0).rand())
+# print("torch cudnn:", torch.backends.cudnn.benchmark, torch.backends.cudnn.deterministic)
+# print("matmul precision:", getattr(torch, "get_float32_matmul_precision", lambda:"n/a")())
+
+# # Threads & BLAS
+# print("OMP:", os.environ.get("OMP_NUM_THREADS"), "MKL:", os.environ.get("MKL_NUM_THREADS"))
+# try:
+#     import mkl
+#     print("MKL threads:", mkl.get_max_threads())
+# except Exception:
+#     pass
+
+# # Who imported numpy/torch first?
+# import sys
+# print("Imported by:", sys.modules['numpy'].__loader__)
+# print("Torch loaded from:", sys.modules['torch'].__file__)
+
+# --------bad list ----
+# import os
+# import sys
+# import shutil
+# import logging
+# import random
+# import time
+# from functools import wraps
+# from pathlib import Path
+# import importlib
+
+# from os.path import dirname, abspath, join, basename, exists
+
+# import warnings
+# warnings.simplefilter(action='ignore', category=FutureWarning)
+
+# dir_path = dirname(dirname(abspath(__file__)))
+# sys.path.insert(0,dir_path)
+
+# import yaml
+# import numpy as np
+# import torch
+# import pandas as pd
+# import anndata as ad
+
+# from viz.visualization import EmbeddingVisualizer
+# from evaluation.eval import EmbeddingEvaluator
+# from utils.logs_ import set_logging, get_logger
+# from setup_path import BASE_PATH, OUTPUT_PATH, PARAMS_PATH, DATA_PATH
+# RNG / determinism snapshot
+# import numpy as np, torch, os
+# print("np first rand:", np.random.RandomState(0).rand())
+# print("torch cudnn:", torch.backends.cudnn.benchmark, torch.backends.cudnn.deterministic)
+# print("matmul precision:", getattr(torch, "get_float32_matmul_precision", lambda:"n/a")())
+
+# # Threads & BLAS
+# print("OMP:", os.environ.get("OMP_NUM_THREADS"), "MKL:", os.environ.get("MKL_NUM_THREADS"))
+# try:
+#     import mkl
+#     print("MKL threads:", mkl.get_max_threads())
+# except Exception:
+#     pass
+
+# # Who imported numpy/torch first?
+# import sys
+# print("Imported by:", sys.modules['numpy'].__loader__)
+# print("Torch loaded from:", sys.modules['torch'].__file__)
+
+# ------------
+
 # Mapping of embedding method names to their corresponding keys in AnnData
-embedding_method_map = dict(PCA='X_pca', HVG='X_hvg', scVI='X_scVI', geneformer='X_geneformer', scgpt='X_scGPT')
+embedding_method_map = dict(PCA='X_pca', HVG='X_hvg', scVI='X_scVI', geneformer='X_geneformer', scgpt='X_scGPT', scfoundation = 'X_scfoundation', scimilarity='X_scimilarity', cellplm='X_CellPLM')
 
 # List to store timing records
 def _get_timing_log():
@@ -206,6 +331,7 @@ class Experiment:
         """
         hvg_config = self.hvg
         if ('skip' in hvg_config) and (hvg_config['skip'] is True):
+            self.log.info('Skipping HVG. Analyzing all genes')
             return
         self.loader.hvg(**hvg_config)
 
@@ -222,8 +348,24 @@ class Experiment:
         feat_config['params']['save_dir'] = self.save_dir
         ExtractorClass = self.load_class(feat_config['module'], feat_config['class'])
         extractor = ExtractorClass(feat_config)
+        
+        #loaded pre-calculated embeddings h5ad
+        fname= join(self.save_dir, 'data.h5ad')
+        if ('load_cached' in feat_config) and (feat_config['load_cached'] is True):
+            try: 
+                extractor.load_cashed(self.loader, fname)
+                self.log.info(f'Loaded cached embeddings {fname}')
+                self.log.info(f'Shape {self.loader.adata.shape}')
+                self.embedding = self.loader.adata.obsm[self.embedding_key]
+                return 
+            except: 
+                self.log.info('Failed to load cached embeddings. Recalculating the embeddings')
+
         self.embedding = extractor.fit_transform(self.loader)
-        self.loader.adata.write_h5ad(join(self.save_dir, 'data.h5ad'), compression='gzip')
+        #TODO: save space, save embeddings only
+        adata_embedding = ad.AnnData(X=self.embedding, obs =  self.loader.adata.obs)
+        adata_embedding.obsm[self.embedding_key] = adata_embedding.X
+        adata_embedding.write_h5ad(fname, compression='gzip')
 
     @timing
     def train_classifier(self):

@@ -2,7 +2,7 @@ run_id:
 dataset:
     module: data.gf_loader
     class: GFLoader
-    path: DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: True
     label_key: group_id
     batch_key: sample_id
@@ -23,7 +23,7 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
@@ -36,9 +36,9 @@ embedding:
         #1- Genefromer 1
         model: Geneformer-V1-10M 
         version: V1
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
-        input_size: 2048
+        model_dir: /home/jupyter/mnt/MODELS/
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
+        input_size: 4096
         batch_size: 8
         
         # 2-Geneformer 1 (LARGE)
@@ -68,6 +68,10 @@ classification:
         n_estimators: 100
         max_depth: 5
         cv: True
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         label_map:
               treatment_naive: 0
               TKI: 1

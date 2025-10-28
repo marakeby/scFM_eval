@@ -207,6 +207,8 @@ class scGPT_Exractor(EmbeddingExtractor):
                     
         if not scgpt_reader.prepared:
             print(self.params)
+            # print('making sure counts are included in adata.layers')
+            # scgpt_reader.adata.layers['counts'] = scgpt_reader.adata.X
             scgpt_reader.prepare_data(n_bins=self.params['n_bins'])
             
         vocab = self.vocab

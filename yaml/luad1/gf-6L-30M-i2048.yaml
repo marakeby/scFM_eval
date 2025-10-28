@@ -2,7 +2,7 @@ run_id:
 dataset:
     module: data.gf_loader
     class: GFLoader
-    path: DATA/luad_brca/luad/luad_analysis1.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/luad_brca/luad/luad_analysis1.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: True
     label_key: group_id
     batch_key: sample_id
@@ -11,12 +11,12 @@ dataset:
     cv_splits: data_splits/luad/luad1/cv_splits.json #path is relative to BASE_PATH in setup_path.py
 
 qc:
-    # skip: True
-    min_genes: 10
-    min_cells: 10
+    # skip: False
+    min_genes: 0
+    min_cells: 0
 
 preprocessing:
-    # skip: True
+    skip: True
     normalize: True
     target_sum: 10000
     apply_log1p: True
@@ -36,8 +36,8 @@ embedding:
         #1- Genefromer 1
         model: Geneformer-V1-10M 
         version: V1
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
+        model_dir: /home/jupyter/mnt/MODELS
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
         input_size: 2048
         batch_size: 8
         
@@ -68,6 +68,10 @@ classification:
         n_estimators: 100
         max_depth: 5
         cv: True
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         label_map:
               early_stage: 0
               late_stage: 1

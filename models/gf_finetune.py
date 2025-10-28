@@ -3,7 +3,6 @@ import torch
 from os.path import join
 from transformers import BertForSequenceClassification, Trainer, TrainingArguments
 from geneformer import DataCollatorForCellClassification
-from models.model_geneformer import Geneformer_Model, compute_metrics
 from features.gf_extractor import GeneformerExtractor
 import logging
 from sklearn.preprocessing import LabelEncoder
@@ -241,7 +240,7 @@ class GFFineTuneModel:
         device = self.device
         vocab_dir = self.model_files['model_vocab']
         
-        trainer, y_test, y_pred, y_pred_score = train_classifier_cell(train_ds, test_ds, model_dir, vocab_dir, output_dir, num_labels, device, freeze_layers=self.freeze_layers)
+        trainer, y_test, y_pred, y_pred_score = train_classifier_cell(train_ds, test_ds, model_dir, vocab_dir, output_dir, num_labels, device, freeze_layers=self.freeze_layers, batch_size=self.batch_size, num_train_epochs= self.epoch)
         
         
         adata_test.obs['pred'] = y_pred
@@ -329,6 +328,29 @@ class GFFineTuneModel:
                                                                             model='vote')
         
         return sample_pred_test_df, sample_metrics_test_df
+    
+    
+    def __train_avg(self, train_ids, test_ids, split_col, evaluate=True, viz=False, postfix=""):
+        """
+        Probability averaging at patient level.
+        """
+        cell_pred_test_df, _ = self.__train_cell(train_ids, test_ids, split_col, evaluate=True, viz=False, postfix=postfix)
+
+        obs = cell_pred_test_df
+        y_score_p = obs.groupby(self.sample_id)["pred_score"].mean()
+        y_pred_p = (y_score_p > 0.5).astype(int)
+        y_true_p = obs.groupby(self.sample_id)["label"].first().reindex(y_score_p.index)
+
+        pred_df = pd.DataFrame({"label": y_true_p, "pred": y_pred_p, "pred_score": y_score_p})
+
+        from evaluation.eval import eval_classifier
+        metrics_df, cls_report = eval_classifier(pred_df["label"], pred_df["pred"], pred_df["pred_score"],
+                                                 estimator_name=self.model_name, label_names=self.label_names)
+        if evaluate:
+            save_results(pred_df, metrics_df, cls_report, self.save_dir, postfix=f"avg_{postfix}" if postfix else "avg",
+                         viz=viz, model_name=self.model_name, label_names=self.label_names)
+            
+        return pred_df, metrics_df
 
     def save_patient_level(self, adata_subset, evaluate=False, viz=False, postfix="", model=""):
         """Save patient-level predictions and metrics"""

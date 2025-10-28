@@ -261,52 +261,139 @@ def plot_classifier(y_test, y_pred, y_pred_score, estimator_name, label_names):
 
 #     return  metrics_df, cls_report
 from sklearn.preprocessing import label_binarize
-def eval_classifier(y_test, y_pred, y_pred_score, estimator_name, label_names):
+# def eval_classifier(y_test, y_pred, y_pred_score, estimator_name, label_names):
     
-    logger.info(f'Evaluating classifier {y_test.shape } {y_pred_score.shape} {estimator_name}')
+#     logger.info(f'Evaluating classifier {y_test.shape } {y_pred_score.shape} {estimator_name}')
     
-    n_classes = len(label_names)
-    y_test_bin = label_binarize(y_test, classes=range(n_classes))
+#     n_classes = len(label_names)
+#     y_test_bin = label_binarize(y_test, classes=range(n_classes))
 
-    # AUC and AUPRC
-    if n_classes == 2:
-        if y_pred_score.ndim>1:
-            y_pred_score = y_pred_score[:,1]
+#     # AUC and AUPRC
+#     if n_classes == 2:
+#         if y_pred_score.ndim>1:
+#             y_pred_score = y_pred_score[:,1]
             
-        fpr, tpr, _ = metrics.roc_curve(y_test, y_pred_score)
-        roc_auc = metrics.auc(fpr, tpr)
+#         fpr, tpr, _ = metrics.roc_curve(y_test, y_pred_score)
+#         roc_auc = metrics.auc(fpr, tpr)
 
 
-        precision, recall, _ = metrics.precision_recall_curve(y_test, y_pred_score)
-        average_precision = metrics.average_precision_score(y_test, y_pred_score)
+#         precision, recall, _ = metrics.precision_recall_curve(y_test, y_pred_score)
+#         average_precision = metrics.average_precision_score(y_test, y_pred_score)
+#     else:
+#         roc_auc = metrics.roc_auc_score(y_test_bin, y_pred_score, average='macro', multi_class='ovr')
+#         average_precision = metrics.average_precision_score(y_test_bin, y_pred_score, average='macro')
+
+#     # Overall metrics
+#     f1 = metrics.f1_score(y_test, y_pred, average='macro')
+#     precision_score = metrics.precision_score(y_test, y_pred, average='macro')
+#     recall = metrics.recall_score(y_test, y_pred, average='macro')
+#     accuracy = metrics.accuracy_score(y_test, y_pred)
+
+#     # Summary dataframe
+#     metrics_dict = dict(
+#         AUC=roc_auc,
+#         AUPRC=average_precision,
+#         F1=f1,
+#         Accuracy=accuracy,
+#         Precision=precision_score,
+#         Recall=recall
+#     )
+#     s = pd.Series(metrics_dict, name='Metrics')
+#     metrics_df = s.to_frame()
+#     metrics_df.columns = [estimator_name]
+#     metrics_df.index.name = 'Metrics'
+#     name_to_label = {name: i for i, name in enumerate(label_names)}
+#     # labels = name_to_label
+#     # Detailed classification report
+#     cls_report = metrics.classification_report(
+#         y_test, y_pred, output_dict=True, target_names=label_names,
+#     )
+
+#     return metrics_df, cls_report
+
+def eval_classifier(y_test, y_pred, y_pred_score, estimator_name, label_names):
+    """
+    y_test: 1D array-like of true labels (ints 0..n_classes-1)
+    y_pred: 1D array-like of predicted labels (same encoding)
+    y_pred_score: 
+        - binary: 1D scores for positive class OR 2D probas with shape (n, 2)
+        - multiclass: 2D probas with shape (n, n_classes) matching label_names order
+    label_names: list of class names in the canonical order; len defines n_classes
+    """
+    logger.info(f'Evaluating classifier {np.shape(y_test)} {np.shape(y_pred_score)} {estimator_name}')
+    
+    y_test = np.asarray(y_test)
+    y_pred = np.asarray(y_pred)
+    n_classes = len(label_names)
+    all_labels = list(range(n_classes))  # canonical label indices
+
+    # --- AUC / AUPRC ---
+    roc_auc = np.nan
+    average_precision = np.nan
+
+    if n_classes == 2:
+        # Normalize scores to 1D for positive class=1
+        if y_pred_score is None:
+            pass  # leave NaNs
+        else:
+            yps = np.asarray(y_pred_score)
+            if yps.ndim == 2 and yps.shape[1] >= 2:
+                yps = yps[:, 1]
+            yps = np.asarray(yps).reshape(-1)
+
+            # Only compute AUC/PR when both classes present in y_test
+            if np.unique(y_test).size > 1:
+                try:
+                    fpr, tpr, _ = metrics.roc_curve(y_test, yps)
+                    roc_auc = metrics.auc(fpr, tpr)
+                except ValueError:
+                    roc_auc = np.nan
+                try:
+                    # precision_recall_curve itself can run, but AP is the scalar we want
+                    average_precision = metrics.average_precision_score(y_test, yps)
+                except ValueError:
+                    average_precision = np.nan
     else:
-        roc_auc = metrics.roc_auc_score(y_test_bin, y_pred_score, average='macro', multi_class='ovr')
-        average_precision = metrics.average_precision_score(y_test_bin, y_pred_score, average='macro')
+        # Multiclass: expect y_pred_score to be (n_samples, n_classes)
+        if y_pred_score is not None and np.asarray(y_pred_score).ndim == 2 and np.asarray(y_pred_score).shape[1] == n_classes:
+            y_test_bin = label_binarize(y_test, classes=all_labels)
+            # Only meaningful if at least 2 classes appear in this fold
+            if np.unique(y_test).size > 1:
+                try:
+                    roc_auc = metrics.roc_auc_score(y_test_bin, y_pred_score, average='macro', multi_class='ovr')
+                except ValueError:
+                    roc_auc = np.nan
+                try:
+                    average_precision = metrics.average_precision_score(y_test_bin, y_pred_score, average='macro')
+                except ValueError:
+                    average_precision = np.nan
 
-    # Overall metrics
-    f1 = metrics.f1_score(y_test, y_pred, average='macro')
-    precision_score = metrics.precision_score(y_test, y_pred, average='macro')
-    recall = metrics.recall_score(y_test, y_pred, average='macro')
+    # --- Overall metrics (robust to single-class with zero_division=0) ---
+    f1 = metrics.f1_score(y_test, y_pred, average='macro', zero_division=0)
+    precision_score = metrics.precision_score(y_test, y_pred, average='macro', zero_division=0)
+    recall = metrics.recall_score(y_test, y_pred, average='macro', zero_division=0)
     accuracy = metrics.accuracy_score(y_test, y_pred)
 
-    # Summary dataframe
     metrics_dict = dict(
         AUC=roc_auc,
         AUPRC=average_precision,
         F1=f1,
         Accuracy=accuracy,
         Precision=precision_score,
-        Recall=recall
+        Recall=recall,
     )
-    s = pd.Series(metrics_dict, name='Metrics')
-    metrics_df = s.to_frame()
+    metrics_df = pd.Series(metrics_dict, name='Metrics').to_frame()
     metrics_df.columns = [estimator_name]
     metrics_df.index.name = 'Metrics'
-    name_to_label = {name: i for i, name in enumerate(label_names)}
-    # labels = name_to_label
-    # Detailed classification report
+
+    # --- Detailed report: force full label space, avoid crashes ---
     cls_report = metrics.classification_report(
-        y_test, y_pred, output_dict=True, target_names=label_names,
+        y_test,
+        y_pred,
+        labels=all_labels,                # ensure rows for all classes in label_names
+        target_names=list(label_names),   # must match len(labels)
+        zero_division=0,
+        output_dict=True,
     )
 
     return metrics_df, cls_report

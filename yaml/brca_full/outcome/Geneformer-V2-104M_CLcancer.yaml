@@ -3,7 +3,7 @@ dataset:
     module: data.gf_loader
     class: GFLoader
     # path: DATA/brca_full/brca_full_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
-    path: DATA/brca_full/T_cells_only.h5ad
+    path: mnt/DATA/brca_full/T_cells_only.h5ad
     load_raw: False
     label_key: outcome
     batch_key: Cancer_type
@@ -31,7 +31,7 @@ preprocessing:
     apply_log1p: True
 
 hvg:
-    batch_key: batch
+    batch_key: 
     n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
@@ -66,10 +66,10 @@ embedding:
 #         # 4-Geneformer 2 (cancer)
         model: Geneformer-V2-104M_CLcancer
         version: V2
-        model_dir: /home/jupyter/MODELS/Geneformer
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer #genefromer 2
+        model_dir: /home/jupyter/mnt/MODELS
+        dict_dir: /home/jupyter/mnt/gf_dicts_v2 #genefromer 2
         input_size: 4096
-        # batch_size: 8
+        batch_size: 8
 
 classification:
     module: models.classify
@@ -78,6 +78,10 @@ classification:
         model: randomforest
         n_estimators: 100
         max_depth: 5
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         cv: True
         label_map:
               NE: 0

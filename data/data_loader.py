@@ -14,7 +14,7 @@ import scanpy as sc
 
 from utils.logs_ import get_logger
 from setup_path import BASE_PATH
-
+import numpy as np
 
 class DataLoader:
     """Base class for loading and preprocessing single-cell data."""
@@ -62,6 +62,8 @@ class DataLoader:
         print(f"Loading data from {self.path}")
         adata = ad.AnnData()
         self.adata = adata
+        self.log.info(f'Data Loaded, {self.adata.X.shape}')
+        self.log.info(f'min {np.min(self.adata.X)}, max {np.max(self.adata.X)}')
         return adata
 
     def _filter(self, adata, filter_dict):
@@ -102,6 +104,12 @@ class DataLoader:
             target_sum (float): Target sum for normalization.
             apply_log1p (bool): Whether to apply log1p transformation.
         """
+        
+        # if layer_key == "X":
+        #     adata.layers["counts"] = adata.X
+        # elif layer_key != "counts":
+        #     adata.layers["counts"] = adata.layers[layer_key]
+    
         self.normalize = normalize
         self.target_sum = target_sum
         self.apply_log1p = apply_log1p
@@ -180,7 +188,12 @@ class H5ADLoader(DataLoader):
         if self.layer != 'X':
             adata.layers['original_X'] = adata.X
             adata.X = adata.layers[self.layer]
+            
+        # if self.layer == "X" and 'counts' not in adata.layers:
+        #     adata.layers["counts"] = adata.X
+        
         self.log.info(f'Data Loaded, {adata.X.shape}')
+        self.log.info(f'X min {np.min(adata.X)}, X max {np.max(adata.X)}')
 
         if self.filter is not None:
             self.log.info(self.filter)

@@ -2,7 +2,7 @@ run_id:
 dataset:
     module: data.scgpt_loader
     class: scgptLoader
-    path: DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: True
     label_key: group_id
     batch_key: sample_id
@@ -23,7 +23,7 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
@@ -35,10 +35,10 @@ embedding:
     params: 
         #Human
         model: scGPT_cancer
-        model_dir: /home/jupyter/MODELS/scGPT
+        model_dir: /home/jupyter/MODELS_old/scGPT
         batch_size: 8
         n_bins: 51
-        max_seq_len: 2048
+        max_seq_len: 4096
 
 classification:
     module: models.classify
@@ -48,6 +48,10 @@ classification:
         n_estimators: 100
         max_depth: 5
         cv: True
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         label_map:
               treatment_naive: 0
               TKI: 1

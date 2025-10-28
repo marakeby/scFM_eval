@@ -1,11 +1,11 @@
-run_id: 
+run_id: original
 dataset:
     module: data.gf_loader
     class: GFLoader
-    path: DATA/brca_full/cancer_cells_only.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/brca_full/cancer_cells_only.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: False
     label_key: Cancer_type
-    batch_key: cohort
+    batch_key: donor_id
     filter: 
       - column: Cancer_type
         values:
@@ -43,11 +43,19 @@ classification:
     class: GFFineTuneModel
     params:
         model: Geneformer-V1-10M
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
+        model_dir: /home/jupyter/mnt/MODELS/
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
         model_input_size: 2048
-        batch_size: 8
+        batch_size: 64
+        epoch: 3
+        # freeze_layers: 2
+        # learning_rate: 0.00001
+        train_funcs: 
+            # - avg
+            # - mil
+            - vote
         cv: True
+        # onesplit: True
         label_map:
               ER+: 0
               TNBC: 1

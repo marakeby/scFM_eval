@@ -104,6 +104,27 @@ class ClassifierPipeline:
             train_ids_list.append(train_ids)
             test_ids_list.append(test_ids)
         return id_column, n_splits, train_ids_list, test_ids_list
+    
+    def get_splits_loocv(self):
+        """Get cross-validation splits"""
+        id_column, n_splits, train_ids_list, test_ids_list = self.get_splits_cv()
+        flattened_list = []
+        for tr, tst in zip(train_ids_list, test_ids_list):
+            flattened_list.extend(tr)
+            flattened_list.extend(tst)
+        unique_elements = list(set(flattened_list))
+        
+        #LOOCV
+        train_ids_list = []
+        test_ids_list = []
+        for i, test_id in enumerate(unique_elements):
+            train_ids = unique_elements[:i] + unique_elements[i+1:]
+            train_ids_list.append(train_ids)
+            test_ids_list.append([test_id])
+
+        n_splits = len(train_ids_list)
+    
+        return id_column, n_splits, train_ids_list, test_ids_list
 
     def split_data(self, id_column, train_ids, test_ids):
         """Split data into train and test sets"""
@@ -165,7 +186,11 @@ class ClassifierPipeline:
         
         # Cross-validation training
         if self.cv:
-            id_column, n_splits, train_ids_list, test_ids_list = self.get_splits_cv()
+            if self.cv =='loocv':
+                id_column, n_splits, train_ids_list, test_ids_list = self.get_splits_loocv()
+            else:
+                id_column, n_splits, train_ids_list, test_ids_list = self.get_splits_cv()
+                
             for tr_f, pre in zip(train_fcs, prefix):
                 self.__train_cv(tr_f, id_column, n_splits, train_ids_list, test_ids_list, pre)
 
@@ -185,7 +210,7 @@ class ClassifierPipeline:
             
             # pred_df, metric_df = train_fnc(adata_train, adata_test, f'fold_{i+1}_')
             # pred_df_train, pred_df_test, metrics_df_train, metrics_df_test = train_fnc(adata_train, adata_test, f'fold_{i+1}_True
-            pred_df_train, pred_df_test, metrics_df_train, metrics_df_test = train_fnc(adata_train, adata_test, evaluate=False, viz=False)
+            pred_df_train, pred_df_test, metrics_df_train, metrics_df_test = train_fnc(adata_train, adata_test, evaluate=True, viz=False)
 
             pred_df_test['fold'] = f'fold_{i+1}'
             metrics_df_test['fold'] = f'fold_{i+1}'
@@ -257,11 +282,22 @@ class ClassifierPipeline:
 #             labels = adata.obs[['sample_id', 'label']].drop_duplicates().set_index('sample_id')
 #             return mean_emb.loc[labels.index], labels['label']
         def aggregate_embeddings(adata):
+        
+            # Validate embedding exists
+            if self.embedding_col not in adata.obsm:
+                raise KeyError(f"Embedding '{self.embedding_col}' not found in adata.obsm")
+    
             emb = adata.obsm[self.embedding_col]
 
             # Convert sparse to dense if necessary
             if not isinstance(emb, np.ndarray):
                 emb = emb.toarray()
+                
+            # Validate sample-label consistency
+            label_counts = adata.obs.groupby('sample_id')['label'].nunique()
+            if (label_counts > 1).any():
+                raise ValueError(f"Samples with multiple labels found: {label_counts[label_counts > 1].index.tolist()}")
+
 
             sample_ids = adata.obs['sample_id'].values
             df_emb = pd.DataFrame(emb, index=sample_ids)
@@ -301,7 +337,7 @@ class ClassifierPipeline:
             postfix = "avg_expr"
             save_results(pred_df_test, metrics_df_test, cls_report_test, self.saving_dir, postfix, viz, self.model_name, self.label_names)
             postfix = "avg_expr_train"
-            save_results(metrics_df_train, metrics_df_train, cls_report_train, self.saving_dir, postfix, viz, self.model_name, self.label_names)
+            save_results(pred_df_train, metrics_df_train, cls_report_train, self.saving_dir, postfix, viz, self.model_name, self.label_names)
 
         return pred_df_train, pred_df_test, metrics_df_train, metrics_df_test
 
@@ -313,16 +349,22 @@ class ClassifierPipeline:
                           patient_key="sample_id", celltype_key="cell_type")
         exp.train(adata_train)
         
+        
+        
         #test
-        pids, y_true, preds, pred_scores = exp.evaluate(adata_test)
+        pids, y_true, preds, pred_scores, metrics_test = exp.evaluate(adata_test)
+        # pids, y_true, preds, pred_scores, metrics
         pred_df_test = pd.DataFrame({'id': pids, 'label': y_true, 'pred': preds, 'pred_score': pred_scores})
         #train
-        pids, y_true, preds, pred_scores = exp.evaluate(adata_train)
+        pids, y_true, preds, pred_scores, metrics_train = exp.evaluate(adata_train)
         pred_df_train = pd.DataFrame({'id': pids, 'label': y_true, 'pred': preds, 'pred_score': pred_scores})
         metrics_df_test, cls_report_test = eval_classifier(pred_df_test['label'], pred_df_test['pred'], pred_df_test['pred_score'], estimator_name=self.model_name, label_names=self.label_names)
         
         metrics_df_train, cls_report_train = eval_classifier(pred_df_train['label'], pred_df_train['pred'], pred_df_train['pred_score'], estimator_name=self.model_name, label_names=self.label_names)
         
+       
+
+            
         if evaluate:
 
             
@@ -331,6 +373,24 @@ class ClassifierPipeline:
             
             save_results(pred_df_train, metrics_df_train, cls_report_train, self.saving_dir, postfix='mil_train', viz=viz, model_name=self.model_name, label_names=self.label_names)
             
+        if viz:
+            from models.attention_viz import print_attention_summary, visualize_attention_comprehensive, export_top_cells_table
+            results = visualize_attention_comprehensive(
+                exp, 
+                adata_test, 
+                top_k=20,
+                save_path=join(self.saving_dir,"attention_analysis.png")
+            )
+            
+            # Print summary
+            print_attention_summary(results)
+
+            # Export top cells for further analysis
+            top_cells_df = export_top_cells_table(
+                results['attention_df'], 
+                top_k=20,
+                save_path=join(self.saving_dir, "top_attention_cells.csv")
+            )
           
         # return pred_df, metrics_df if evaluate else None
         return pred_df_train, pred_df_test, metrics_df_train, metrics_df_test

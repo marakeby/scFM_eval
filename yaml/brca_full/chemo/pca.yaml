@@ -1,11 +1,11 @@
-run_id: 
+run_id:
 dataset:
     module: data.data_loader
     class: H5ADLoader
-    path: DATA/brca_full/cancer_cells_only.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/brca_full/cancer_cells_only.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: False
     label_key: cohort
-    batch_key: Cancer_type
+    batch_key: donor_id
     filter: 
       - column: timepoint
         values:
@@ -42,6 +42,10 @@ classification:
         model: randomforest
         n_estimators: 100
         max_depth: 5
+        train_funcs: 
+            - avg
+            - mil
+            - vote
         cv: True
         label_map:
               treatment_naive: 0

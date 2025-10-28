@@ -1,11 +1,11 @@
-run_id: 
+run_id: 100
 dataset:
     module: data.data_loader
     class: H5ADLoader
-    path: DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/brca_full/brca_cells_only_3000cell_4096gene.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: False
     label_key: cell_types
-    batch_key: Cancer_type
+    batch_key: donor_id
     filter: 
       - column: timepoint
         values:
@@ -26,7 +26,7 @@ preprocessing:
 
 hvg:
     batch_key: batch
-    n_top_genes: 2048
+    n_top_genes: 4096
     flavor: seurat # expect logarithmized data
     
 embedding:
@@ -38,10 +38,10 @@ embedding:
     params:
         batch_key: cell_types
         n_layers: 2
-        n_latent: 30
+        n_latent: 100
         gene_likelihood: "nb"
         max_epochs: 10
-        layer_name:  #None 
+        layer_name: counts #None 
         batch_size: 128
         # njobs: 23
 

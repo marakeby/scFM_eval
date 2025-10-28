@@ -1,8 +1,8 @@
-run_id: freez2
+run_id: original
 dataset:
     module: data.gf_loader
     class: GFLoader
-    path: DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
+    path: mnt/DATA/luad_brca/luad/luad_analysis2.h5ad #path is relative to DATA_PATH in setup_path.py
     load_raw: True
     label_key: group_id
     batch_key: sample_id
@@ -35,11 +35,18 @@ classification:
     class: GFFineTuneModel
     params:
         model: Geneformer-V1-10M
-        model_dir: /home/jupyter/MODELS/Geneformer/
-        dict_dir: /home/jupyter/MODELS/Geneformer/geneformer/gene_dictionaries_30m #genefromer 1
+        model_dir: /home/jupyter/mnt/MODELS/
+        dict_dir: /home/jupyter/mnt/gf_dicts_v1 #genefromer 1
         model_input_size: 2048
-        batch_size: 8
-        freeze_layers: 2
+        batch_size: 64
+        epoch: 3
+        # freeze_layers: 2
+        # learning_rate: 0.00001
+        train_funcs: 
+            # - avg
+            # - mil
+            - vote
+        cv: True
         label_map:
               treatment_naive: 0
               TKI: 1
