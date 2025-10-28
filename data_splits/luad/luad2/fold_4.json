@@ -1,0 +1,1 @@
+{"train_ids": ["kim_BRONCHO_58", "kim_EBUS_28", "kim_EBUS_49", "maynard_LT_S11", "maynard_LT_S57", "maynard_LT_S71"], "test_ids": ["kim_EBUS_06", "maynard_LT_S56"], "train_labels": ["treatment_naive", "treatment_naive", "treatment_naive", "TKI", "TKI", "TKI"], "test_labels": ["treatment_naive", "TKI"]}
